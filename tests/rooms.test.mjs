@@ -178,6 +178,7 @@ test("private Blob adapter bypasses caches and translates ETag conflicts", async
   const read = await store.read("ABCDEF12");
   assert.equal(read.etag, "etag-4");
   assert.equal(getOptions.useCache, false);
+  assert.equal(getOptions.headers["Accept-Encoding"], "identity");
   assert.equal(getOptions.access, "private");
   await store.write("ABCDEF12", { version: 5 }, read.etag);
   assert.equal(putOptions.ifMatch, "etag-4");

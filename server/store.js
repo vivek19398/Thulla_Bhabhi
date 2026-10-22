@@ -48,6 +48,8 @@ export function makeBlobStore(
         access: "private",
         ...options(),
         useCache: false,
+        // Preserve the storage ETag instead of a compressed-response validator.
+        headers: { "Accept-Encoding": "identity" },
       });
       if (!r) return null;
       return { room: await new Response(r.stream).json(), etag: r.blob.etag };

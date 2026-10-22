@@ -64,7 +64,11 @@ async function refresh() {
       render();
     }
   } catch (e) {
-    message(e.message + " Reconnecting…");
+    if (e.status === 404) {
+      lastError = e.message;
+      table = null;
+      setup();
+    } else message(e.message + " Reconnecting…");
   }
   schedule();
 }
@@ -109,10 +113,11 @@ function setup() {
   home = true;
   clearTimeout(poll);
   const invite = new URLSearchParams(location.search).get("table") || "";
-  app.innerHTML = `<section class="intro"><img class="hero-logo" src="assets/bhabhi-tulla-logo.webp" alt="Bhabhi / Tulla card emblem" width="160" height="160"><p class="eyebrow">THE FAMILY TABLE</p><h1>Bhabhi / Tulla</h1><p class="intro-tagline">Your family. One table. Any phone.</p><p>Create a table and share its code. Everyone plays on their own device, with their own private hand.</p><form class="form" id="online-form"><label>Your name<input id="name" maxlength="24" autocomplete="nickname" required placeholder="Your name"></label><div class="mode-switch"><button type="button" id="create-tab" class="gold" aria-pressed="true">Create table</button><button type="button" id="join-tab" aria-pressed="false">Join with code</button></div><label id="title-label">Table name<input id="title" maxlength="24" value="Family table"></label><label id="code-label" hidden>Table code<input id="code" maxlength="8" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="8-character code" value="${esc(invite)}"></label><p id="notice" class="error" role="status">${esc(lastError)}</p><button class="gold" id="submit">Create table ↗</button>${session ? '<button type="button" id="resume">Return to my table</button>' : ""}</form><p class="muted">3–8 people · Private hands · Rejoin after a refresh</p></section>`;
+  app.innerHTML = `<section class="intro"><img class="hero-logo" src="assets/bhabhi-tulla-logo.webp" alt="Bhabhi / Tulla card emblem" width="160" height="160"><p class="eyebrow">THE FAMILY TABLE</p><h1>Bhabhi / Tulla</h1><p class="intro-tagline">Your family. One table. Any phone.</p><p>Create a table and share its code. Everyone plays on their own device, with their own private hand.</p><form class="form" id="online-form"><label>Your name<input id="name" maxlength="24" autocomplete="nickname" required placeholder="Your name"></label><div class="mode-switch"><button type="button" id="create-tab" class="gold" aria-pressed="true">Create table</button><button type="button" id="join-tab" aria-pressed="false">Join with code</button></div><label id="title-label">Table name<input id="title" maxlength="24" value="Family table"></label><label id="code-label" hidden>Table code<input id="code" maxlength="8" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="8-character code" value="${esc(invite)}"></label><p id="cleanup-note" class="muted">Creating a new table permanently replaces all older tables and ends their games.</p><p id="notice" class="error" role="status">${esc(lastError)}</p><button class="gold" id="submit">Create table ↗</button>${session ? '<button type="button" id="resume">Return to my table</button>' : ""}</form><p class="muted">3–8 people · Private hands · Rejoin after a refresh</p></section>`;
   let joining = false;
   function setJoin(value) {
     joining = value;
+    $("#cleanup-note").hidden = value;
     $("#title-label").hidden = value;
     $("#code-label").hidden = !value;
     $("#submit").textContent = value ? "Join table ↗" : "Create table ↗";
@@ -233,7 +238,10 @@ function render() {
   const t = table,
     g = t.game,
     me = t.players[t.seat];
-  if (!g) { paintedRoom = null; paintedCards.clear(); }
+  if (!g) {
+    paintedRoom = null;
+    paintedCards.clear();
+  }
   const humanTurn = g && g.turn === t.seat && !g.over;
   app.innerHTML = `<div class="table-head"><div><p class="eyebrow">${esc(t.title)}</p><h2 style="margin:0">Bhabhi / Tulla</h2></div><div class="table-code"><span class="muted">TABLE CODE</span><b>${esc(t.code)}</b><button id="invite">Copy invite</button></div></div><p id="notice" class="error" role="status">${esc(lastError)}</p>${!g ? `<section class="seats" aria-label="Players">${t.players.map((p, i) => `<div class="seat ${g?.turn === i && !g?.over ? "active" : ""} ${p.out ? "out" : ""}"><span class="avatar">${esc(p.name[0])}</span><b>${esc(p.name)}${i === t.seat ? " (you)" : ""}</b><span class="muted">${g ? (p.out ? "✓ Escaped" : `${p.count} cards`) : p.ready ? "✓ Ready" : "Getting ready"}${i === 0 ? " · host" : ""}</span></div>`).join("")}</section>` : ""}${
     !g

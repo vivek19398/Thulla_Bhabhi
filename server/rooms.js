@@ -63,13 +63,20 @@ export function roomService(store) {
         receipts: [],
         updatedAt: new Date().toISOString(),
       };
+      // Snapshot before creating so a simultaneous, newer table is never swept.
+      const olderTables = await store.listTables();
       await store.write(code, r, null);
+      await store.deleteTables(olderTables.filter((old) => old !== code));
       return { table: view(r, 0), token };
     }
     if (typeof b.code !== "string" || !/^[A-F0-9]{8}$/.test(b.code))
       fail(400, "Enter an eight-character table code.");
     const loaded = await store.read(b.code);
-    if (!loaded) fail(404, "Table not found.");
+    if (!loaded)
+      fail(
+        404,
+        "This table no longer exists. A new table may have replaced it.",
+      );
     const { room: r, etag } = loaded;
     let seat =
       typeof b.token === "string"

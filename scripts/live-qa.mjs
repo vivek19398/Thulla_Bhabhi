@@ -1,3 +1,5 @@
+// This production suite creates a table, which now deletes older game saves.
+if (process.env.ALLOW_TABLE_REPLACEMENT !== 'yes') throw Error('This test deletes older production tables. Run only with explicit permission and ALLOW_TABLE_REPLACEMENT=yes.');
 import {writeFile} from 'node:fs/promises';
 const base='https://thullacardgame.vercel.app';const results=[],timings=[];
 const check=(name,ok,detail='')=>{results.push({name,pass:!!ok,detail});console.log(`${ok?'PASS':'FAIL'} ${name} ${detail}`)};

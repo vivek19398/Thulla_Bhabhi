@@ -9,6 +9,12 @@ function memory() {
   const records = new Map();
   return {
     records,
+    async listTables() {
+      return [...records.keys()];
+    },
+    async deleteTables(codes) {
+      for (const code of codes) records.delete(code);
+    },
     async read(code) {
       return structuredClone(records.get(code) || null);
     },
@@ -229,4 +235,110 @@ test("empty/oversized names, path-like codes, capacity and duplicate names", asy
     f.service({ action: "join", code: f.code, name: "Ninth" }),
     (e) => e.status === 409,
   );
+});
+test("creating a new table deletes older game saves and invalidates old seats", async () => {
+  const store = memory(),
+    service = roomService(store);
+  const old = await service({ action: "create", name: "Old host" });
+  const fresh = await service({ action: "create", name: "New host" });
+  assert.equal(store.records.size, 1);
+  assert.ok(store.records.has(fresh.table.code));
+  await assert.rejects(
+    service({ action: "state", code: old.table.code, token: old.token }),
+    (e) => e.status === 404,
+  );
+  assert.equal(
+    (
+      await service({
+        action: "state",
+        code: fresh.table.code,
+        token: fresh.token,
+      })
+    ).table.host,
+    true,
+  );
+});
+test("new-table validation or write failure never deletes existing saves", async () => {
+  const store = memory(),
+    service = roomService(store);
+  const old = await service({ action: "create", name: "Host" });
+  await assert.rejects(service({ action: "create", name: " " }));
+  const originalWrite = store.write;
+  store.write = async () => {
+    throw Error("Storage unavailable");
+  };
+  await assert.rejects(service({ action: "create", name: "Other host" }));
+  assert.ok(store.records.has(old.table.code));
+  store.write = originalWrite;
+});
+test("disk cleanup deletes only game JSON and preserves unrelated files", async () => {
+  const { writeFile, readFile } = await import("node:fs/promises");
+  const dir = await mkdtemp(join(tmpdir(), "bhabhi-cleanup-"));
+  try {
+    const store = diskStore(dir),
+      service = roomService(store);
+    const a = await service({ action: "create", name: "A" });
+    await writeFile(join(dir, "settings.json"), "keep");
+    await writeFile(join(dir, "note.txt"), "keep");
+    const b = await service({ action: "create", name: "B" });
+    assert.equal(await store.read(a.table.code), null);
+    assert.ok(await store.read(b.table.code));
+    assert.equal(await readFile(join(dir, "settings.json"), "utf8"), "keep");
+    assert.equal(await readFile(join(dir, "note.txt"), "utf8"), "keep");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+test("Blob cleanup paginates and limits deletion to game-table paths", async () => {
+  const { makeBlobStore } = await import("../server/store.js");
+  const calls = [],
+    deleted = [];
+  const store = makeBlobStore(
+    async () => ({
+      async list(opts) {
+        calls.push(opts);
+        return opts.cursor
+          ? {
+              blobs: [
+                { pathname: "tables/BBBBBBBB.json" },
+                { pathname: "tables/nested/CCCCCCCC.json" },
+              ],
+              hasMore: false,
+            }
+          : {
+              blobs: [
+                { pathname: "tables/AAAAAAAA.json" },
+                { pathname: "tables/settings.json" },
+                { pathname: "other/DDDDDDDD.json" },
+              ],
+              hasMore: true,
+              cursor: "next",
+            };
+      },
+      async del(paths) {
+        deleted.push(...paths);
+      },
+    }),
+    {},
+  );
+  const codes = await store.listTables();
+  assert.deepEqual(codes, ["AAAAAAAA", "BBBBBBBB"]);
+  await store.deleteTables([...codes, "../outside"]);
+  assert.deepEqual(deleted, ["tables/AAAAAAAA.json", "tables/BBBBBBBB.json"]);
+  assert.equal(calls[0].prefix, "tables/");
+  assert.equal(calls[1].cursor, "next");
+});
+test("cleanup snapshot does not delete a table created after the snapshot", async () => {
+  const store = memory(),
+    service = roomService(store);
+  const older = await service({ action: "create", name: "A" });
+  const originalWrite = store.write;
+  store.write = async function (code, room, etag) {
+    await originalWrite.call(this, code, room, etag);
+    this.records.set("FFFFFFFF", { room: { code: "FFFFFFFF" }, etag: "1" });
+  };
+  const fresh = await service({ action: "create", name: "B" });
+  assert.ok(!store.records.has(older.table.code));
+  assert.ok(store.records.has(fresh.table.code));
+  assert.ok(store.records.has("FFFFFFFF"));
 });

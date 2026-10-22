@@ -12,7 +12,10 @@ After deployment open the URL, enter a player and table name, create the table a
 
 ## JSON saves and replacement
 
-The server stores one private file per table code: `tables/CODE.json`. Its contents include the display name, members, hashed seat tokens, current game, version and recent command receipts. Display names are not unique identifiers: two families can both call a table “Family table” and still have separate codes.
+Creating a new table deletes all older game-table JSON files (`tables/XXXXXXXX.json`) from the connected store, including active games. Only saves listed before the new table is created are removed; tables created concurrently after that snapshot are preserved. Unrelated Blob files are untouched. The new save must succeed before cleanup runs. A cleanup failure is reported as a storage error; a fresh file may already exist in that case.
+
+
+The server stores one private file per table code: `tables/CODE.json`. Its contents include the display name, members, hashed seat tokens, current game, version and recent command receipts. Display names are not unique identifiers: table codes identify the saves. With automatic cleanup enabled, creating a new table replaces older tables.
 
 Every accepted move replaces the same file. The host can return everyone to the lobby (with an in-game confirmation); readiness resets and dealing starts a fresh game in the same file with the same seats and code. No game archive is created. Host reset is also the recovery path for an abandoned game. Seats cannot be removed or substituted in this release.
 

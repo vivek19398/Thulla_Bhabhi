@@ -155,17 +155,90 @@ function setup() {
     }
   };
 }
+let paintedRoom = null;
+let paintedCards = new Set();
+function roundTable(t) {
+  const g = t.game;
+  const initial = paintedRoom !== t.code;
+  if (initial) paintedCards = new Set();
+  paintedRoom = t.code;
+  const completed = !g.trick.length && g.lastTrick;
+  const cards = g.trick.length ? g.trick : g.lastTrick?.cards || [];
+  const round = completed ? g.round - 1 : g.round;
+  const seats = t.players
+    .map((p, i) => {
+      const relative = (i - t.seat + t.players.length) % t.players.length;
+      const angle = Math.PI / 2 + (relative * 2 * Math.PI) / t.players.length;
+      const x = 50 + Math.cos(angle) * 44,
+        y = 50 + Math.sin(angle) * 44;
+      return `<div data-seat="${i}" class="seat orbit-seat ${g.turn === i && !g.over ? "active" : ""} ${p.out ? "out" : ""}" style="left:${x}%;top:${y}%"><span class="avatar">${esc(p.name[0])}</span><b>${esc(p.name)}${i === t.seat ? " (you)" : ""}</b><span class="muted">${p.out ? "✓ Escaped" : `${p.count} cards`}</span></div>`;
+    })
+    .join("");
+  const pile = cards
+    .map((x, i) => {
+      const key = `${round}:${x.player}:${x.card.id}`;
+      const fresh = !initial && !paintedCards.has(key);
+      paintedCards.add(key);
+      const offset =
+        (i - (cards.length - 1) / 2) *
+        Math.min(25, 110 / Math.max(1, cards.length - 1));
+      const tilt = ((x.card.r * 7 + x.player * 11) % 19) - 9;
+      return `<div class="played tossed-card" data-from="${x.player}" data-fresh="${fresh}" style="--offset:${offset}px;--tilt:${tilt}deg;z-index:${i + 1}">${card(x.card)}<small>${esc(t.players[x.player].name)}</small></div>`;
+    })
+    .join("");
+  return `<section class="round-stage" aria-label="Circular card table"><div class="round-felt"><div class="table-grain"></div><p class="eyebrow table-caption">${g.over ? "THE TABLE IS SETTLED" : completed ? (g.lastTrick.hit ? "TULLA · PICKED UP" : "TRICK DISCARDED") : g.trick.length ? `FOLLOW ${g.trick[0].card.s}` : "A FRESH LEAD"}<span>TRICK ${round}</span></p><div class="round-pile ${completed ? "completed-pile" : ""}">${pile || '<span class="muted">Waiting for the lead</span>'}</div></div>${seats}</section>`;
+}
+function animateThrows() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  app
+    .querySelectorAll('.tossed-card[data-fresh="true"]')
+    .forEach((played, i) => {
+      const origin = app.querySelector(`[data-seat="${played.dataset.from}"]`);
+      const target = played.querySelector(".card");
+      if (!origin || !target) return;
+      const a = origin.getBoundingClientRect(),
+        b = target.getBoundingClientRect();
+      const dx = a.x + a.width / 2 - b.x - b.width / 2;
+      const dy = a.y + a.height / 2 - b.y - b.height / 2;
+      target.animate(
+        [
+          {
+            transform: `translate(${dx}px, ${dy}px) rotate(-18deg) scale(.75)`,
+            opacity: 0.4,
+            filter: "drop-shadow(0 18px 12px #0005)",
+          },
+          {
+            transform: `translate(${dx * 0.28}px, ${dy * 0.2 - 18}px) rotate(6deg) scale(1.06)`,
+            opacity: 1,
+            offset: 0.65,
+          },
+          {
+            transform: "translate(0, -3px) rotate(-2deg) scale(1.01)",
+            offset: 0.88,
+          },
+          { transform: "translate(0, 0) rotate(0) scale(1)" },
+        ],
+        {
+          duration: 540,
+          delay: i * 55,
+          easing: "cubic-bezier(.2,.7,.25,1)",
+          fill: "backwards",
+        },
+      );
+    });
+}
 function render() {
   if (!table) return setup();
   home = false;
   const t = table,
     g = t.game,
     me = t.players[t.seat];
+  if (!g) { paintedRoom = null; paintedCards.clear(); }
   const humanTurn = g && g.turn === t.seat && !g.over;
-  app.innerHTML = `<div class="table-head"><div><p class="eyebrow">${esc(t.title)}</p><h2 style="margin:0">Bhabhi / Tulla</h2></div><div class="table-code"><span class="muted">TABLE CODE</span><b>${esc(t.code)}</b><button id="invite">Copy invite</button></div></div><p id="notice" class="error" role="status">${esc(lastError)}</p><section class="seats" aria-label="Players">${t.players.map((p, i) => `<div class="seat ${g?.turn === i && !g?.over ? "active" : ""} ${p.out ? "out" : ""}"><span class="avatar">${esc(p.name[0])}</span><b>${esc(p.name)}${i === t.seat ? " (you)" : ""}</b><span class="muted">${g ? (p.out ? "✓ Escaped" : `${p.count} cards`) : p.ready ? "✓ Ready" : "Getting ready"}${i === 0 ? " · host" : ""}</span></div>`).join("")}</section>${
+  app.innerHTML = `<div class="table-head"><div><p class="eyebrow">${esc(t.title)}</p><h2 style="margin:0">Bhabhi / Tulla</h2></div><div class="table-code"><span class="muted">TABLE CODE</span><b>${esc(t.code)}</b><button id="invite">Copy invite</button></div></div><p id="notice" class="error" role="status">${esc(lastError)}</p>${!g ? `<section class="seats" aria-label="Players">${t.players.map((p, i) => `<div class="seat ${g?.turn === i && !g?.over ? "active" : ""} ${p.out ? "out" : ""}"><span class="avatar">${esc(p.name[0])}</span><b>${esc(p.name)}${i === t.seat ? " (you)" : ""}</b><span class="muted">${g ? (p.out ? "✓ Escaped" : `${p.count} cards`) : p.ready ? "✓ Ready" : "Getting ready"}${i === 0 ? " · host" : ""}</span></div>`).join("")}</section>` : ""}${
     !g
       ? `<section class="privacy lobby"><p class="eyebrow">PULL UP A CHAIR</p><h2>${t.players.length} / 8 players at the table</h2><p class="muted">Share code <b>${esc(t.code)}</b> with your family.<br>At least 3 players must join and everyone must be ready.</p><button class="gold" id="ready">${me.ready ? "Not ready" : "I’m ready"}</button>${t.host ? `<button id="deal" ${t.players.length < 3 || t.players.some((p) => !p.ready) ? "disabled" : ""}>Shuffle & deal</button>` : '<p class="muted">The host deals when everyone is ready.</p>'}</section>`
-      : `<div class="banner" role="status">${g.over ? `${esc(t.players[g.loser].name)} is the last holding cards.` : esc(g.message)}</div><section class="arena"><p class="eyebrow">${g.over ? "THE TABLE IS SETTLED" : g.trick.length ? `FOLLOW ${g.trick[0].card.s}` : "A FRESH LEAD"} · TRICK ${g.round}</p><div class="pile">${g.trick.length ? g.trick.map((x) => `<div class="played">${card(x.card)}<small>${esc(t.players[x.player].name)}</small></div>`).join("") : `<span class="muted">${g.over ? "Until the next deal." : `${esc(t.players[g.turn].name)} to lead`}</span>`}</div></section><section class="hand-head"><p class="eyebrow">${esc(me.name)} · ${g.hand.length} cards</p><h2>${g.over ? "One more round?" : me.out ? "You’re safely away." : humanTurn ? "Your move. Make it count." : `Waiting for ${esc(t.players[g.turn].name)}…`}</h2><p class="muted">${g.over ? "The host can return everyone to the lobby." : humanTurn ? "Tap a highlighted card to play. Follow suit if you can." : "Your hand stays private on this device."}</p><div class="hand" aria-label="Your cards">${[
+      : `<div class="banner" role="status">${g.over ? `${esc(t.players[g.loser].name)} is the last holding cards.` : esc(g.message)}</div>${roundTable(t)}<section class="hand-head"><p class="eyebrow">${esc(me.name)} · ${g.hand.length} cards</p><h2>${g.over ? "One more round?" : me.out ? "You’re safely away." : humanTurn ? "Your move. Make it count." : `Waiting for ${esc(t.players[g.turn].name)}…`}</h2><p class="muted">${g.over ? "The host can return everyone to the lobby." : humanTurn ? "Tap a highlighted card to play. Follow suit if you can." : "Your hand stays private on this device."}</p><div class="hand" aria-label="Your cards">${[
           ...g.hand,
         ]
           .sort((a, b) => a.s.localeCompare(b.s) || a.r - b.r)
@@ -174,6 +247,7 @@ function render() {
             "",
           )}</div>${g.canTake ? '<button id="take">Take the next player’s hand</button>' : ""}</section><details class="feed"><summary>At the table · recent tricks</summary>${g.lastTrick ? `<p>Last trick: ${g.lastTrick.cards.map((x) => `${esc(t.players[x.player].name)} ${rank(x.card)}${x.card.s}`).join(" · ")}</p>` : ""}${g.history.map((s) => `<div>${esc(s)}</div>`).join("")}</details>${t.host ? '<div class="actions"><button id="reset">Return everyone to lobby</button></div>' : ""}`
   }<footer>Code ${esc(t.code)} · Saved after every move · Refresh to restore your seat<br>Keep this browser’s data to keep your seat.</footer><dialog id="reset-dialog"><h2>Start fresh at this table?</h2><p>This replaces the current game. Everyone returns to the lobby and marks ready before a new deal.</p><button id="cancel-reset">Keep playing</button><button class="gold" id="confirm-reset">Return to lobby</button></dialog>`;
+  animateThrows();
   $("#invite").onclick = async () => {
     const url = new URL(location.href);
     url.search = "";

@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-22T18:07:19.069Z",
+  "target": "https://thullacardgame.vercel.app",
+  "passed": 10,
+  "failed": 3,
+  "requests": 8,
+  "latency": {},
+  "results": [
+    {
+      "name": "static /",
+      "pass": true,
+      "detail": "200, 1809 bytes, 84 ms"
+    },
+    {
+      "name": "static /app.js",
+      "pass": true,
+      "detail": "200, 10906 bytes, 18 ms"
+    },
+    {
+      "name": "static /style.css",
+      "pass": true,
+      "detail": "200, 9188 bytes, 16 ms"
+    },
+    {
+      "name": "static /assets/bhabhi-tulla-logo.png",
+      "pass": true,
+      "detail": "200, 1520835 bytes, 303 ms"
+    },
+    {
+      "name": "GET rejected",
+      "pass": true,
+      "detail": "HTTP 405"
+    },
+    {
+      "name": "malformed JSON",
+      "pass": false,
+      "detail": "HTTP 503"
+    },
+    {
+      "name": "null body",
+      "pass": true,
+      "detail": "HTTP 400"
+    },
+    {
+      "name": "invalid code",
+      "pass": true,
+      "detail": "HTTP 400"
+    },
+    {
+      "name": "blank name",
+      "pass": true,
+      "detail": "HTTP 400"
+    },
+    {
+      "name": "oversize body",
+      "pass": true,
+      "detail": "HTTP 413"
+    },
+    {
+      "name": "cross origin",
+      "pass": true,
+      "detail": "HTTP 403"
+    },
+    {
+      "name": "create persistent table",
+      "pass": false,
+      "detail": "HTTP 503, 348 ms"
+    },
+    {
+      "name": "suite completed",
+      "pass": false,
+      "detail": "Live storage unavailable; multiplayer tests blocked."
+    }
+  ],
+  "timings": [
+    {
+      "action": "malformed",
+      "status": 405,
+      "ms": 135
+    },
+    {
+      "action": "malformed",
+      "status": 503,
+      "ms": 112
+    },
+    {
+      "action": "malformed",
+      "status": 400,
+      "ms": 107
+    },
+    {
+      "action": "state",
+      "status": 400,
+      "ms": 157
+    },
+    {
+      "action": "create",
+      "status": 400,
+      "ms": 113
+    },
+    {
+      "action": "create",
+      "status": 413,
+      "ms": 119
+    },
+    {
+      "action": "create",
+      "status": 403,
+      "ms": 104
+    },
+    {
+      "action": "create",
+      "status": 503,
+      "ms": 348
+    }
+  ]
+}

@@ -31,7 +31,14 @@ export function createHandler(store = blobStore) {
         return send(413, { error: "Request too large." });
       return send(200, await service(b));
     } catch (e) {
-      const status = e.status || (e instanceof SyntaxError ? 400 : 503);
+      const status =
+        e.status ||
+        (e instanceof SyntaxError || e.statusCode === 400 ? 400 : 503);
+      if (status === 503)
+        console.error(
+          "[bhabhi] Storage request failed:",
+          e.constructor?.name || "Error",
+        );
       send(status, {
         error: e.status
           ? e.message

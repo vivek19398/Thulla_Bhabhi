@@ -187,3 +187,45 @@ test("private Blob adapter bypasses caches and translates ETag conflicts", async
   await store.write("ABCDEF12", { version: 1 }, null);
   assert.equal(putOptions.allowOverwrite, false);
 });
+test("dashboard-prefixed Blob environment variables are passed to the SDK", async () => {
+  const { makeBlobStore } = await import("../server/store.js");
+  let options;
+  class Precondition extends Error {}
+  const store = makeBlobStore(
+    async () => ({
+      BlobPreconditionFailedError: Precondition,
+      async put(p, b, o) {
+        options = o;
+      },
+    }),
+    {
+      BLOB_READ_WRITE_TOKEN_STORE_ID: "store_test",
+      BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN: "test-token",
+    },
+  );
+  await store.write("ABCDEF12", { version: 1 }, null);
+  assert.equal(options.storeId, "store_test");
+  assert.equal(options.token, "test-token");
+});
+test("empty/oversized names, path-like codes, capacity and duplicate names", async () => {
+  const f = await lobby();
+  for (const n of ["", " ".repeat(2), "x".repeat(25)])
+    await assert.rejects(
+      f.service({ action: "create", name: n }),
+      (e) => e.status === 400,
+    );
+  await assert.rejects(
+    f.service({ action: "state", code: "../state" }),
+    (e) => e.status === 400,
+  );
+  await assert.rejects(
+    f.service({ action: "join", code: f.code, name: " second " }),
+    (e) => e.status === 400,
+  );
+  for (let n = 3; n < 8; n++)
+    await f.service({ action: "join", code: f.code, name: "Extra " + n });
+  await assert.rejects(
+    f.service({ action: "join", code: f.code, name: "Ninth" }),
+    (e) => e.status === 409,
+  );
+});

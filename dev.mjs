@@ -27,9 +27,11 @@ http
           ? "text/javascript"
           : path.endsWith(".css")
             ? "text/css"
-            : path.endsWith(".png")
-              ? "image/png"
-              : "text/html",
+            : path.endsWith(".webp")
+              ? "image/webp"
+              : path.endsWith(".png")
+                ? "image/png"
+                : "text/html",
       );
       res.end(data);
     } catch {

@@ -1,0 +1,9 @@
+{
+  "games": 600,
+  "moves": 53620,
+  "maxMoves": 182,
+  "durationMs": 1723,
+  "seed": 571,
+  "playerCounts": "3–8",
+  "checks": "legal move availability, conservation of all 52 cards, no duplicate cards, escaped player invariants, completion"
+}

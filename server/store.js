@@ -29,12 +29,24 @@ export function diskStore(directory) {
     },
   };
 }
-export function makeBlobStore(load = () => import("@vercel/blob")) {
+export function makeBlobStore(
+  load = () => import("@vercel/blob"),
+  env = process.env,
+) {
+  const options = () => ({
+    ...(env.BLOB_READ_WRITE_TOKEN_STORE_ID && !env.BLOB_STORE_ID
+      ? { storeId: env.BLOB_READ_WRITE_TOKEN_STORE_ID }
+      : {}),
+    ...(env.BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN && !env.BLOB_READ_WRITE_TOKEN
+      ? { token: env.BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN }
+      : {}),
+  });
   return {
     async read(code) {
       const { get } = await load();
       const r = await get(`tables/${code}.json`, {
         access: "private",
+        ...options(),
         useCache: false,
       });
       if (!r) return null;
@@ -45,6 +57,7 @@ export function makeBlobStore(load = () => import("@vercel/blob")) {
       try {
         await put(`tables/${code}.json`, JSON.stringify(room), {
           access: "private",
+          ...options(),
           contentType: "application/json",
           addRandomSuffix: false,
           allowOverwrite: etag !== null,

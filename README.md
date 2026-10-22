@@ -1,21 +1,35 @@
 # Bhabhi / Tulla · The family table
 
-A standalone browser card game. Run `npm run dev` in this folder and open http://localhost:3032. Run `npm test` for rules tests and `npm run build` to copy the standalone application to `dist/`.
+Online private-hand card game for 3–8 people. Create a named table, share its eight-character code or invite link, and join from separate phones. Everyone marks ready; the host shuffles and deals. Pass-and-play has been removed. There are no computer players in online rooms.
 
-Play with 3–8 seats: one human with computer opponents, or pass-and-play on one device. Hands are hidden between shared-device turns. Games save automatically in this browser. Computers use only their own hand and the current trick. There is no online room service; opening another device creates an independent game.
+## Deploy to Vercel
 
-Rules reference: https://www.pagat.com/inflation/getaway.html . User reference: https://boardgamegeek.com/thread/471299/the-perfect-card-game (direct access was blocked; the Royal BC Museum Paldi educator guide identifies this thread as Bhabi).
+Import `vivek19398/Thulla_Bhabhi`. Leave Root Directory at `./`; framework Other, build `npm run build`, output `dist` (included in `vercel.json`). Node 22 or newer is required.
 
-Clockwise, 52 cards, aces high. The first trick always discards. Subsequent off-suit cards immediately stop the trick and the highest led-suit player picks up. An empty highest player draws at random from the prior waste and must lead the drawn card. Empty other players escape after trick resolution. A Thulla against a forced drawn lead in the final duel settles the game immediately. Taking the next active hand is offered to the current leader before normal tricks; arbitrary out-of-turn taking is not supported. A fallback draw from the next hand handles custom states with an empty waste. No trumps, scoring, house-rule penalties, accounts or network multiplayer.
+In the project Storage tab create a **private Vercel Blob store**, connect it to Production (and Preview if desired), then redeploy. The SDK uses the connected store's OIDC environment variables when available, otherwise `BLOB_READ_WRITE_TOKEN`. Never put storage credentials in frontend code or Git. No Supabase, SQL setup or database is used.
 
-All visuals are local CSS and text; no commercial artwork or remote assets. Browser storage must be available for persistence. Computer play pauses when the tab is hidden. No hosted deployment was configured.
+After deployment open the URL, enter a player and table name, create the table and copy the invite. At least three people join on separate devices, mark ready, and the host deals. Clearing browser storage loses your seat; use the same browser to reconnect. A host who loses their seat needs to create a new table.
 
-## Branding and mobile
+## JSON saves and replacement
 
-Generated emblem: `public/assets/bhabhi-tulla-logo.png`, made with the built-in image generation tool. Prompt in `docs/logo-prompt.txt`. The responsive table uses compact player tiles, 44px controls, five-column card hands (four on narrow phones), safe-area spacing and readable inactive cards.
+The server stores one private file per table code: `tables/CODE.json`. Its contents include the display name, members, hashed seat tokens, current game, version and recent command receipts. Display names are not unique identifiers: two families can both call a table “Family table” and still have separate codes.
 
-## Vercel deployment
+Every accepted move replaces the same file. The host can return everyone to the lobby (with an in-game confirmation); readiness resets and dealing starts a fresh game in the same file with the same seats and code. No game archive is created. Host reset is also the recovery path for an abandoned game. Seats cannot be removed or substituted in this release.
 
-Import `vivek19398/Thulla_Bhabhi` into Vercel. Leave Root Directory at the repository root (`./`). The included `vercel.json` sets build command `npm run build`, output `dist`, and framework Other.
+Reads bypass Blob caches. Writes use the last read ETag to prevent concurrent updates overwriting one another. The server validates turns and legal cards, cryptographically shuffles, and returns only the caller's hand, public counts/tricks and legal moves. Seat tokens stay in the browser; only hashes are stored server-side. A table code allows someone to join the lobby, but does not grant access to existing private hands. No account or family password is required: share invitations privately. Use Vercel's firewall/rate controls for public traffic or abuse prevention.
 
-This initial release supports computer opponents and shared-device play. Named online rooms and private Vercel Blob JSON persistence are planned but not implemented in this release. No Blob token is required for this initial version.
+Clients poll every 1.8 seconds while visible and stop when hidden. Storage requests and server functions incur Vercel usage; JSON storage is not guaranteed faster than a database. A disconnected player keeps their seat and the game waits for their turn. Internet is required for online play. A failed/conflicting request is shown without applying it twice; refresh and retry if a move is uncertain.
+
+## Development
+
+With Node 22+ and pnpm: `pnpm install`, `pnpm dev`, then http://localhost:3032. Without Blob credentials local development uses `.data/CODE.json` files, saved atomically and ignored by Git. Keep the host running to share the local server with devices on its Wi-Fi. Production always uses private Blob, never ephemeral Vercel disk storage. `node --env-file-if-exists=.env.local dev.mjs` loads a local Blob token if desired.
+
+`pnpm test` runs engine, privacy, authorization, concurrency, retry, reset, persistence and storage-adapter checks. `pnpm build` creates `dist`. Live Blob and multi-device production verification require the connected Vercel project and store; mocked storage checks do not provision or verify that infrastructure.
+
+## Rules and artwork
+
+Reference: https://www.pagat.com/inflation/getaway.html . User reference: https://boardgamegeek.com/thread/471299/the-perfect-card-game (direct access blocked).
+
+Clockwise, 52 cards, aces high. Opening trick always discards. A later off-suit Tulla stops the trick: highest led-suit player picks up and leads. An empty highest player draws from previous waste and must lead it. Other empty players escape after trick resolution. A Tulla against a forced drawn lead in the final duel settles the game. Taking the next active hand is available to the leader before normal tricks. No trumps or formal scoring.
+
+Generated emblem: `public/assets/bhabhi-tulla-logo.png`, created with the built-in image generator; prompt in `docs/logo-prompt.txt`. Mobile layout includes touch controls and responsive card grids. No remote artwork, fonts or audio assets load during play.

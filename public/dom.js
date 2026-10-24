@@ -2,6 +2,7 @@ function nodeKey(node) {
   if (node.nodeType !== 1) return null;
   return (
     node.id ||
+    node.dataset.playKey ||
     node.dataset.card ||
     node.dataset.seat ||
     node.dataset.suit ||

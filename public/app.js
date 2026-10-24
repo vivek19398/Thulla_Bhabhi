@@ -300,7 +300,7 @@ function roundTable(t) {
         (i - (cards.length - 1) / 2) *
         Math.min(25, 110 / Math.max(1, cards.length - 1));
       const tilt = ((x.card.r * 7 + x.player * 11) % 19) - 9;
-      return `<div class="played tossed-card" data-from="${x.player}" data-fresh="${fresh}" style="--offset:${offset}px;--tilt:${tilt}deg;z-index:${i + 1}">${card(x.card)}<small>${esc(t.players[x.player].name)}</small></div>`;
+      return `<div class="played tossed-card" data-play-key="${esc(key)}" data-from="${x.player}" data-fresh="${fresh}" style="--offset:${offset}px;--tilt:${tilt}deg;z-index:${i + 1}">${card(x.card)}<small>${esc(t.players[x.player].name)}</small></div>`;
     })
     .join("");
   return `<section class="round-stage" aria-label="Circular card table"><div class="round-felt"><div class="table-grain"></div><p class="eyebrow table-caption">${g.over ? "THE TABLE IS SETTLED" : completed ? (g.lastTrick.hit ? "TULLA · PICKED UP" : "TRICK DISCARDED") : g.trick.length ? `FOLLOW ${g.trick[0].card.s}` : "A FRESH LEAD"}<span>TRICK ${round}</span></p><div class="round-pile ${completed ? "completed-pile" : ""}">${pile || '<span class="muted">Waiting for the lead</span>'}</div><button class="inspect-trick" id="inspect">Inspect trick</button><div class="discard-stack" aria-label="Discard pile">♠<small>${g.wasteCount} out</small></div></div>${seats}</section>`;

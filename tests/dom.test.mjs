@@ -58,3 +58,17 @@ test("removed cards disappear, new cards are inserted in order, and legal state 
     ["B", "C"],
   );
 });
+test("new-trick cards get new wrappers so finished collection animations cannot hide them", () => {
+  const { root } = fixture();
+  patchView(
+    root,
+    '<div class="round-pile"><div class="played" data-play-key="1:0:A">A</div></div>',
+  );
+  const previous = root.querySelector(".played");
+  patchView(
+    root,
+    '<div class="round-pile"><div class="played" data-play-key="2:0:A">A</div></div>',
+  );
+  assert.notStrictEqual(root.querySelector(".played"), previous);
+  assert.equal(previous.isConnected, false);
+});

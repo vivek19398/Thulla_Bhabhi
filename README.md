@@ -21,7 +21,7 @@ Every accepted move replaces the same file. The host can return everyone to the 
 
 Reads bypass Blob caches. Writes use the last read ETag to prevent concurrent updates overwriting one another. The server validates turns and legal cards, cryptographically shuffles, and returns only the caller's hand, public counts/tricks and legal moves. Seat tokens stay in the browser; only hashes are stored server-side. A table code allows someone to join the lobby, but does not grant access to existing private hands. No account or family password is required: share invitations privately. Use Vercel's firewall/rate controls for public traffic or abuse prevention.
 
-Clients poll every 1.8 seconds while visible and stop when hidden. Storage requests and server functions incur Vercel usage; JSON storage is not guaranteed faster than a database. A disconnected player keeps their seat and the game waits for their turn. Internet is required for online play. A failed/conflicting request is shown without applying it twice; refresh and retry if a move is uncertain.
+Clients poll every 1.6 seconds during play, 4–8 seconds in the lobby, and 10 seconds after a game while visible. Failed connections back off to at most 30 seconds; polling stops when hidden. Authenticated polls return a small unchanged response when versions match (Blob is still read to authenticate and check the version). Storage requests and server functions incur Vercel usage; JSON storage is not guaranteed faster than a database. A disconnected player keeps their seat and the game waits for their turn. Internet is required for online play. A failed/conflicting request is shown without applying it twice; refresh and retry if a move is uncertain.
 
 ## Development
 
@@ -36,3 +36,11 @@ Reference: https://www.pagat.com/inflation/getaway.html . User reference: https:
 Clockwise, 52 cards, aces high. Opening trick always discards. A later off-suit Tulla stops the trick: highest led-suit player picks up and leads. An empty highest player draws from previous waste and must lead it. Other empty players escape after trick resolution. A Tulla against a forced drawn lead in the final duel settles the game. Taking the next active hand is available to the leader before normal tricks. No trumps or formal scoring.
 
 Generated emblem: `public/assets/bhabhi-tulla-logo.png`, created with the built-in image generator; prompt in `docs/logo-prompt.txt`. Mobile layout includes touch controls and responsive card grids. No remote artwork, fonts or audio assets load during play.
+
+## Mobile and connection improvements (24 October 2026)
+
+Hands are grouped by suit into collapsible rows with counts. The circular table is smaller on short phones. Inspect trick expands public cards and their players; completed tricks animate to the recipient or discard stack, respecting reduced-motion preferences. Updates reconcile existing elements to preserve collapsed groups, inspector snapshots and keyboard focus.
+
+Connection status is separate from errors. Uncertain move responses retry once using the same command ID and version; if still uncertain, the retry button reuses the pending command. Validation/conflict responses are not blindly retried. Pending retries are in memory: keep the tab open until resolved. An invite for a different saved table presents a join/resume choice.
+
+Table creation remains open with no host password; creating a table still deletes older game saves.

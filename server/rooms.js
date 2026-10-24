@@ -95,6 +95,8 @@ export function roomService(store) {
     } else {
       if (seat < 0)
         fail(403, "Your seat could not be restored. Join the table again.");
+      if (b.action === "state" && b.knownVersion === r.version)
+        return { unchanged: true, version: r.version };
       if (["state", "join"].includes(b.action)) return { table: view(r, seat) };
       if (typeof b.id !== "string" || !/^[a-zA-Z0-9-]{8,80}$/.test(b.id))
         fail(400, "Missing move ID.");

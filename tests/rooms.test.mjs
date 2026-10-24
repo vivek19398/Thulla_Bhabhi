@@ -342,3 +342,49 @@ test("cleanup snapshot does not delete a table created after the snapshot", asyn
   assert.ok(store.records.has(fresh.table.code));
   assert.ok(store.records.has("FFFFFFFF"));
 });
+test("unchanged state is returned only after seat authentication", async () => {
+  const f = await lobby();
+  const t = (await f.service({ ...f.seats[0], action: "state" })).table;
+  const same = await f.service({
+    ...f.seats[0],
+    action: "state",
+    knownVersion: t.version,
+  });
+  assert.deepEqual(same, { unchanged: true, version: t.version });
+  await assert.rejects(
+    f.service({
+      code: f.code,
+      token: "fake",
+      action: "state",
+      knownVersion: t.version,
+    }),
+    (e) => e.status === 403,
+  );
+  await f.service(cmd(f.seats[0], "ready", t.version));
+  const changed = await f.service({
+    ...f.seats[0],
+    action: "state",
+    knownVersion: t.version,
+  });
+  assert.ok(changed.table);
+  assert.equal(changed.table.version, t.version + 1);
+});
+test("a lost move response can be retried without toggling readiness twice", async () => {
+  const { retrySameCommand } = await import("../public/client-policy.js");
+  const f = await lobby();
+  const t = (await f.service({ ...f.seats[0], action: "state" })).table;
+  const body = cmd(f.seats[0], "ready", t.version);
+  let calls = 0;
+  const result = await retrySameCommand(
+    async (b) => {
+      const accepted = await f.service(b);
+      if (++calls === 1) throw new TypeError("Response lost after save");
+      return accepted;
+    },
+    body,
+    { pause: async () => {} },
+  );
+  assert.equal(calls, 2);
+  assert.equal(result.table.version, t.version + 1);
+  assert.equal(result.table.players[0].ready, true);
+});
